@@ -421,8 +421,17 @@ fn parse_str_u64(v: &serde_json::Value, key: &str) -> u64 {
     v.get(key).and_then(|x| x.as_str()).and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
+fn ffprobe_path() -> std::ffi::OsString {
+    // 실행 파일 옆 ffprobe.exe 우선, 없으면 PATH에서 찾음
+    if let Ok(exe) = std::env::current_exe() {
+        let candidate = exe.with_file_name("ffprobe.exe");
+        if candidate.exists() { return candidate.into_os_string(); }
+    }
+    std::ffi::OsString::from("ffprobe")
+}
+
 fn run_ffprobe_metadata(path: &Path) -> Option<serde_json::Value> {
-    let out = std::process::Command::new("ffprobe")
+    let out = std::process::Command::new(ffprobe_path())
         .args(["-v", "quiet", "-print_format", "json", "-show_streams", "-show_format"])
         .arg(path).creation_flags(CREATE_NO_WINDOW).output().ok()?;
     serde_json::from_slice(&out.stdout).ok()
@@ -430,7 +439,7 @@ fn run_ffprobe_metadata(path: &Path) -> Option<serde_json::Value> {
 
 fn run_ffprobe_frames(path: &Path, sample_n: usize) -> Option<serde_json::Value> {
     let interval = format!("%+#{}", sample_n);
-    let out = std::process::Command::new("ffprobe")
+    let out = std::process::Command::new(ffprobe_path())
         .args(["-v", "quiet", "-print_format", "json", "-show_frames",
                "-select_streams", "v:0", "-read_intervals", &interval])
         .arg(path).creation_flags(CREATE_NO_WINDOW).output().ok()?;
@@ -1834,7 +1843,7 @@ fn main() {
         CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok();
 
         // ffprobe 가용성 미리 확인 (비차단)
-        let ffprobe_ok = std::process::Command::new("ffprobe")
+        let ffprobe_ok = std::process::Command::new(ffprobe_path())
             .arg("-version").creation_flags(CREATE_NO_WINDOW).output()
             .map(|o| o.status.success()).unwrap_or(false);
 

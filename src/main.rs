@@ -809,7 +809,7 @@ impl AppState {
                 result_labels: vec![],
                 result_paths: vec![],
                 cancel: Arc::new(Mutex::new(false)),
-                sample_frames: 500,
+                sample_frames: 1000,
                 min_file_size_mb: 1,
             },
         }
@@ -1127,7 +1127,7 @@ unsafe fn layout(hwnd: HWND) {
 
     // 폴더+결과 가변 영역
     let flex_h = h - content_top - label_h - gap - mid_h - label_h - gap - below_result;
-    let folder_h = (flex_h * 2 / 7).max(30);
+    let folder_h = (flex_h * 1 / 6).max(30);
     let result_h = (flex_h - folder_h).max(30);
 
     let folder_w = w - btn_w - m * 3;
@@ -1452,7 +1452,7 @@ unsafe fn on_vid_scan(hwnd: HWND) {
         st.folders.clone()
     };
 
-    let sample_frames = get_edit_text(HWND_EDIT_FRAMES).trim().parse::<usize>().unwrap_or(500).max(50).min(5000);
+    let sample_frames = get_edit_text(HWND_EDIT_FRAMES).trim().parse::<usize>().unwrap_or(1000).max(50).min(10000);
     let min_size_mb   = get_edit_text(HWND_EDIT_SIZE).trim().parse::<u64>().unwrap_or(1);
     let min_size_bytes = min_size_mb * 1024 * 1024;
 
@@ -1682,7 +1682,7 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
                 // ── 영상 체크 전용 ──────────────────────
                 HWND_BTN_SCAN_VID = create_control("BUTTON", "스캔",
                     WS_CHILD | WS_TABSTOP, WINDOW_EX_STYLE(0), 0,0,0,0, hwnd, ID_BTN_SCAN_VID);
-                HWND_EDIT_FRAMES = create_control_font("EDIT", "500",
+                HWND_EDIT_FRAMES = create_control_font("EDIT", "1000",
                     WS_CHILD | WS_TABSTOP | WS_BORDER | WINDOW_STYLE(ES_NUMBER as u32 | ES_AUTOHSCROLL as u32),
                     WS_EX_CLIENTEDGE, 0,0,0,0, hwnd, ID_EDIT_FRAMES, H_FONT);
                 HWND_EDIT_SIZE = create_control_font("EDIT", "1",
@@ -1858,7 +1858,7 @@ fn main() {
             PCWSTR(class_name.as_ptr()),
             PCWSTR(title.as_ptr()),
             WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-            CW_USEDEFAULT, CW_USEDEFAULT, 1150, 820,
+            CW_USEDEFAULT, CW_USEDEFAULT, 1150, 1000,
             None, None, Some(hinstance), None,
         ).unwrap();
 

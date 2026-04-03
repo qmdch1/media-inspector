@@ -1109,22 +1109,23 @@ unsafe fn layout(hwnd: HWND) {
     MoveWindow(HWND_TAB_VIDEO, m + (tab_btn_w + tab_gap) * 2,       m, tab_btn_w, tab_h, true).ok();
 
     let content_top = m + tab_h + gap;
-    let content_h = h - content_top;
     let tab = { state().current_tab };
 
-    // 탭별 중간 영역 높이 계산
+    // 탭별 중간 영역 높이 계산 (폴더 목록 아래 ~ 결과 라벨 위)
     let mid_h: i32 = match tab {
-        Tab::FileFinder => btn_h + gap,   // 검색어 입력 + 버튼
+        Tab::FileFinder      => label_h + gap + btn_h + gap, // 검색어 라벨 + 입력행
         Tab::DuplicateFinder => btn_h + gap,
-        Tab::VideoChecker => btn_h + gap + btn_h + gap, // 옵션 행 + 스캔 버튼 행
+        Tab::VideoChecker    => btn_h + gap + btn_h + gap,   // 옵션 행 + 스캔 버튼 행
     };
 
-    // 하단 고정 높이: 결과 라벨 + status + stats
-    let bottom_fixed = label_h + gap + status_h + gap + status_h + m;
-    // 영상체크는 detail 패널 추가
-    let bottom_fixed = if tab == Tab::VideoChecker { bottom_fixed + 80 + gap } else { bottom_fixed };
+    // 하단 고정 높이: 결과 라벨 + 결과 리스트 아래 요소들 + 하단 여백
+    let below_result: i32 = match tab {
+        Tab::VideoChecker => 80 + gap + status_h + gap + status_h + m, // detail + status + stats
+        _                 =>            status_h + gap + status_h + m,
+    };
 
-    let folder_area_h = content_h - mid_h - bottom_fixed;
+    // 폴더 영역 비율 고정: 폴더 2, 결과 5
+    let folder_area_h = h - content_top - mid_h - label_h - gap - below_result;
     let folder_h = folder_area_h * 2 / 7;
     let result_h = folder_area_h - folder_h;
 
@@ -1141,56 +1142,55 @@ unsafe fn layout(hwnd: HWND) {
 
     let y_mid = y_folder + folder_h.max(30) + gap;
 
+    // result_h 최소 보장
+    let result_h = result_h.max(30);
+
     match tab {
         Tab::FileFinder => {
-            // 검색어 라벨
             let lbl_q_w = w - m * 2;
             MoveWindow(HWND_LBL_QUERY, m, y_mid, lbl_q_w, label_h, true).ok();
             let y_query = y_mid + label_h + gap;
-            // 검색어 입력 + 검색 + 취소 버튼
             let search_w = 100;
             let cancel_w = 80;
             let edit_w = w - search_w - cancel_w - m*2 - gap*2;
-            MoveWindow(HWND_EDIT_QUERY,  m,                              y_query, edit_w,   btn_h, true).ok();
-            MoveWindow(HWND_BTN_SEARCH,  m + edit_w + gap,               y_query, search_w, btn_h, true).ok();
-            MoveWindow(HWND_BTN_CANCEL,  m + edit_w + gap + search_w + gap, y_query, cancel_w, btn_h, true).ok();
+            MoveWindow(HWND_EDIT_QUERY,  m,                                    y_query, edit_w,   btn_h, true).ok();
+            MoveWindow(HWND_BTN_SEARCH,  m + edit_w + gap,                     y_query, search_w, btn_h, true).ok();
+            MoveWindow(HWND_BTN_CANCEL,  m + edit_w + gap + search_w + gap,    y_query, cancel_w, btn_h, true).ok();
 
             let y_lbl_result = y_query + btn_h + gap;
             let open_w = 150;
             MoveWindow(HWND_LBL_RESULT, m, y_lbl_result, w - open_w - m*2 - gap, label_h, true).ok();
-            MoveWindow(HWND_BTN_OPEN, w - open_w - m, y_lbl_result, open_w, label_h, true).ok();
+            MoveWindow(HWND_BTN_OPEN,   w - open_w - m, y_lbl_result, open_w, label_h, true).ok();
             let y_result = y_lbl_result + label_h + gap;
-            MoveWindow(HWND_RESULT_LIST, m, y_result, w - m*2, result_h.max(30), true).ok();
-            let y_status = y_result + result_h.max(30) + gap;
-            MoveWindow(HWND_STATUS, m, y_status,           w - m*2, status_h, true).ok();
+            MoveWindow(HWND_RESULT_LIST, m, y_result, w - m*2, result_h, true).ok();
+            let y_status = y_result + result_h + gap;
+            MoveWindow(HWND_STATUS, m, y_status,                 w - m*2, status_h, true).ok();
             MoveWindow(HWND_STATS,  m, y_status + status_h + gap, w - m*2, status_h, true).ok();
         }
         Tab::DuplicateFinder => {
-            // 스캔 + 취소 + 삭제 버튼
-            MoveWindow(HWND_BTN_SCAN_DUP, m,               y_mid, 120, btn_h, true).ok();
-            MoveWindow(HWND_BTN_CANCEL,   m + 120 + gap,   y_mid,  90, btn_h, true).ok();
-            MoveWindow(HWND_BTN_DELETE,   m + 120 + gap + 90 + gap, y_mid, 130, btn_h, true).ok();
+            MoveWindow(HWND_BTN_SCAN_DUP, m,                           y_mid, 120, btn_h, true).ok();
+            MoveWindow(HWND_BTN_CANCEL,   m + 120 + gap,               y_mid,  90, btn_h, true).ok();
+            MoveWindow(HWND_BTN_DELETE,   m + 120 + gap + 90 + gap,    y_mid, 130, btn_h, true).ok();
 
             let y_lbl_result = y_mid + btn_h + gap;
             MoveWindow(HWND_LBL_RESULT, m, y_lbl_result, w - m*2, label_h, true).ok();
             let y_result = y_lbl_result + label_h + gap;
-            MoveWindow(HWND_RESULT_LIST, m, y_result, w - m*2, result_h.max(30), true).ok();
-            let y_status = y_result + result_h.max(30) + gap;
-            MoveWindow(HWND_STATUS, m, y_status,           w - m*2, status_h, true).ok();
+            MoveWindow(HWND_RESULT_LIST, m, y_result, w - m*2, result_h, true).ok();
+            let y_status = y_result + result_h + gap;
+            MoveWindow(HWND_STATUS, m, y_status,                 w - m*2, status_h, true).ok();
             MoveWindow(HWND_STATS,  m, y_status + status_h + gap, w - m*2, status_h, true).ok();
         }
         Tab::VideoChecker => {
-            // 옵션 행
             let lbl_small_w = 110;
             let edit_w_small = 60;
             let mut ox = m;
-            MoveWindow(HWND_LBL_FRAMES,  ox, y_mid + 4, lbl_small_w, label_h, true).ok();
+            MoveWindow(HWND_LBL_FRAMES,  ox, y_mid + 4, lbl_small_w,      label_h, true).ok();
             ox += lbl_small_w + 4;
-            MoveWindow(HWND_EDIT_FRAMES, ox, y_mid,     edit_w_small, btn_h, true).ok();
+            MoveWindow(HWND_EDIT_FRAMES, ox, y_mid,      edit_w_small,     btn_h,   true).ok();
             ox += edit_w_small + gap * 2;
             MoveWindow(HWND_LBL_SIZE,    ox, y_mid + 4, lbl_small_w + 10, label_h, true).ok();
             ox += lbl_small_w + 14;
-            MoveWindow(HWND_EDIT_SIZE,   ox, y_mid,     edit_w_small, btn_h, true).ok();
+            MoveWindow(HWND_EDIT_SIZE,   ox, y_mid,      edit_w_small,     btn_h,   true).ok();
 
             let y_btns = y_mid + btn_h + gap;
             MoveWindow(HWND_BTN_SCAN_VID, m,             y_btns, 120, btn_h, true).ok();
@@ -1198,14 +1198,14 @@ unsafe fn layout(hwnd: HWND) {
 
             let y_lbl_result = y_btns + btn_h + gap;
             let open_w = 150;
-            MoveWindow(HWND_LBL_RESULT,  m,              y_lbl_result, w - open_w - m*2 - gap, label_h, true).ok();
+            MoveWindow(HWND_LBL_RESULT,   m,             y_lbl_result, w - open_w - m*2 - gap, label_h, true).ok();
             MoveWindow(HWND_BTN_OPEN_VID, w - open_w - m, y_lbl_result, open_w, label_h, true).ok();
             let y_result = y_lbl_result + label_h + gap;
-            MoveWindow(HWND_RESULT_LIST, m, y_result, w - m*2, result_h.max(30), true).ok();
-            let y_detail = y_result + result_h.max(30) + gap;
+            MoveWindow(HWND_RESULT_LIST, m, y_result, w - m*2, result_h, true).ok();
+            let y_detail = y_result + result_h + gap;
             MoveWindow(HWND_DETAIL, m, y_detail, w - m*2, 80, true).ok();
             let y_status = y_detail + 80 + gap;
-            MoveWindow(HWND_STATUS, m, y_status,           w - m*2, status_h, true).ok();
+            MoveWindow(HWND_STATUS, m, y_status,                 w - m*2, status_h, true).ok();
             MoveWindow(HWND_STATS,  m, y_status + status_h + gap, w - m*2, status_h, true).ok();
         }
     }

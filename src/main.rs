@@ -990,6 +990,9 @@ unsafe fn show_tab(tab: Tab) {
     let is_dup   = tab == Tab::DuplicateFinder;
     let is_video = tab == Tab::VideoChecker;
 
+    // 레이아웃을 먼저 계산해 각 컨트롤 위치를 확정한 뒤 show/hide
+    layout(HWND_MAIN);
+
     let show_hide = |hwnd: HWND, visible: bool| {
         ShowWindow(hwnd, if visible { SW_SHOW } else { SW_HIDE }).ok();
     };
@@ -1021,7 +1024,7 @@ unsafe fn show_tab(tab: Tab) {
     };
     set_text(HWND_LBL_RESULT, result_label);
 
-    // 폴더 목록 새로고침 (탭마다 독립적)
+    // 폴더 목록 새로고침
     refresh_folder_list();
     refresh_result_list();
 
@@ -1043,9 +1046,6 @@ unsafe fn show_tab(tab: Tab) {
         set_text(HWND_STATS, hint);
         set_text(HWND_STATUS, "");
     }
-
-    // 레이아웃 재계산
-    layout(HWND_MAIN);
 }
 
 unsafe fn refresh_folder_list() {

@@ -1111,23 +1111,24 @@ unsafe fn layout(hwnd: HWND) {
     let content_top = m + tab_h + gap;
     let tab = { state().current_tab };
 
-    // 탭별 중간 영역 높이 계산 (폴더 목록 아래 ~ 결과 라벨 위)
+    // 폴더 목록 높이: 전체에서 고정 요소 제외 후 2/7
+    // 고정 요소: content_top + 폴더라벨 + gap + gap(폴더→mid) + mid + 결과라벨 + gap + below_result
+    // mid = 탭별 조작 버튼 영역 (결과 라벨 직전까지)
+    // below_result = 결과 리스트 아래 요소들 + 하단 여백
     let mid_h: i32 = match tab {
-        Tab::FileFinder      => label_h + gap + btn_h + gap, // 검색어 라벨 + 입력행
+        Tab::FileFinder      => label_h + gap + btn_h + gap,
         Tab::DuplicateFinder => btn_h + gap,
-        Tab::VideoChecker    => btn_h + gap + btn_h + gap,   // 옵션 행 + 스캔 버튼 행
+        Tab::VideoChecker    => btn_h + gap + btn_h + gap,
     };
-
-    // 하단 고정 높이: 결과 라벨 + 결과 리스트 아래 요소들 + 하단 여백
     let below_result: i32 = match tab {
-        Tab::VideoChecker => gap + 80 + gap + status_h + gap + status_h + m, // result→detail gap + detail + status + stats
-        _                 =>                  status_h + gap + status_h + m,
+        Tab::VideoChecker => gap + 80 + gap + status_h + gap + status_h + m,
+        _                 =>            gap + status_h + gap + status_h + m,
     };
 
-    // 폴더 영역 비율 고정: 폴더 2, 결과 5
-    let folder_area_h = h - content_top - mid_h - label_h - gap - below_result;
-    let folder_h = folder_area_h * 2 / 7;
-    let result_h = folder_area_h - folder_h;
+    // 폴더+결과 가변 영역
+    let flex_h = h - content_top - label_h - gap - mid_h - label_h - gap - below_result;
+    let folder_h = (flex_h * 2 / 7).max(30);
+    let result_h = (flex_h - folder_h).max(30);
 
     let folder_w = w - btn_w - m * 3;
     let btn_x    = w - btn_w - m;
@@ -1136,14 +1137,11 @@ unsafe fn layout(hwnd: HWND) {
     let y_lbl_folder = content_top;
     let y_folder     = y_lbl_folder + label_h + gap;
     MoveWindow(HWND_LBL_FOLDER,  m,     y_lbl_folder, w - m*2,  label_h,  true).ok();
-    MoveWindow(HWND_FOLDER_LIST, m,     y_folder,     folder_w, folder_h.max(30), true).ok();
+    MoveWindow(HWND_FOLDER_LIST, m,     y_folder,     folder_w, folder_h, true).ok();
     MoveWindow(HWND_BTN_ADD,     btn_x, y_folder,               btn_w, btn_h, true).ok();
     MoveWindow(HWND_BTN_REMOVE,  btn_x, y_folder + btn_h + gap, btn_w, btn_h, true).ok();
 
-    let y_mid = y_folder + folder_h.max(30) + gap;
-
-    // result_h 최소 보장
-    let result_h = result_h.max(30);
+    let y_mid = y_folder + folder_h + gap;
 
     match tab {
         Tab::FileFinder => {

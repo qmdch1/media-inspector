@@ -1,12 +1,16 @@
 # Media Inspector
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![Built with Rust](https://img.shields.io/badge/Built%20with-Rust-CE422B?style=flat-square&logo=rust)](https://www.rust-lang.org/)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2B-0078D4?style=flat-square&logo=windows)](https://github.com/qmdch1/media-inspector/releases/latest)
+
 A Windows media file management tool with file search, duplicate detection, and video quality analysis — all in one window.
 
 ## Download
 
-**[Download MediaInspector.exe](https://github.com/qmdch1/media-inspector/releases/latest/download/MediaInspector.exe)**
+[![Download](https://img.shields.io/github/v/release/qmdch1/media-inspector?label=Download&style=for-the-badge&logo=github&color=2ea44f)](https://github.com/qmdch1/media-inspector/releases/latest/download/MediaInspector.exe)
 
-> Requires Windows 10 x64. No installation needed — just run the exe.
+> Windows 10 x64 — no installation needed, just run the exe.
 
 ## Features
 
@@ -70,3 +74,7 @@ cargo build --release
 | HIBR | Abnormally high bitrate |
 | RES | Non-standard resolution |
 | ROT | Rotation metadata (portrait video) |
+
+## License
+
+[MIT](LICENSE)

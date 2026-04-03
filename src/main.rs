@@ -1111,22 +1111,24 @@ unsafe fn layout(hwnd: HWND) {
     let content_top = m + tab_h + gap;
     let tab = { state().current_tab };
 
-    // 폴더 목록 높이: 전체에서 고정 요소 제외 후 2/7
-    // 고정 요소: content_top + 폴더라벨 + gap + gap(폴더→mid) + mid + 결과라벨 + gap + below_result
-    // mid = 탭별 조작 버튼 영역 (결과 라벨 직전까지)
-    // below_result = 결과 리스트 아래 요소들 + 하단 여백
-    let mid_h: i32 = match tab {
-        Tab::FileFinder      => label_h + gap + btn_h + gap,
-        Tab::DuplicateFinder => btn_h + gap,
-        Tab::VideoChecker    => btn_h + gap + btn_h + gap,
-    };
+    // 결과 리스트 아래 고정 높이
     let below_result: i32 = match tab {
         Tab::VideoChecker => gap + 80 + gap + status_h + gap + status_h + m,
         _                 =>            gap + status_h + gap + status_h + m,
     };
 
+    // 폴더라벨~결과리스트 사이 고정 높이 (폴더목록·결과목록 제외)
+    // FileFinder:      폴더라벨 + gap + 폴더목록 + gap + 검색어라벨 + gap + 입력행 + gap + 결과라벨 + gap
+    // DuplicateFinder: 폴더라벨 + gap + 폴더목록 + gap + 버튼행 + gap + 결과라벨 + gap
+    // VideoChecker:    폴더라벨 + gap + 폴더목록 + gap + 옵션행 + gap + 스캔행 + gap + 결과라벨 + gap
+    let fixed_above: i32 = match tab {
+        Tab::FileFinder      => label_h + gap + label_h + gap + btn_h + gap + label_h + gap,
+        Tab::DuplicateFinder => label_h + gap +                  btn_h + gap + label_h + gap,
+        Tab::VideoChecker    => label_h + gap + btn_h + gap + btn_h + gap + label_h + gap,
+    };
+
     // 폴더+결과 가변 영역
-    let flex_h = h - content_top - label_h - gap - mid_h - label_h - gap - below_result;
+    let flex_h = h - content_top - fixed_above - below_result;
     let folder_h = (flex_h * 1 / 6).max(30);
     let result_h = (flex_h - folder_h).max(30);
 

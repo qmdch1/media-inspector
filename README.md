@@ -7,9 +7,11 @@ Requires **ffprobe** (included with FFmpeg) for video quality analysis.
 
 ## Download
 
-| File | Platform |
-|------|----------|
-| [MediaInspector.exe](https://github.com/qmdch1/media-inspector/releases/latest/download/MediaInspector.exe) | Windows (x64) |
+| File | Description | Platform |
+|------|-------------|----------|
+| [MediaInspector-v1.0.0-windows-x64.zip](https://github.com/qmdch1/media-inspector/releases/latest/download/MediaInspector-v1.0.0-windows-x64.zip) | MediaInspector + ffprobe (all-in-one) | Windows (x64) |
+| [MediaInspector.exe](https://github.com/qmdch1/media-inspector/releases/latest/download/MediaInspector.exe) | Standalone exe (ffprobe required separately) | Windows (x64) |
+| [ffprobe.exe](https://github.com/qmdch1/media-inspector/releases/latest/download/ffprobe.exe) | ffprobe only | Windows (x64) |
 
 ---
 

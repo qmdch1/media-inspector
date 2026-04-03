@@ -55,7 +55,8 @@ const ID_BTN_SCAN_DUP:  u16 = 120;
 const ID_BTN_DELETE:    u16 = 121;
 
 // 영상 체크 전용
-const ID_BTN_SCAN_VID:  u16 = 130;
+const ID_BTN_SCAN_VID:    u16 = 130;
+const ID_BTN_ADD_FILE_VID: u16 = 135;
 const ID_EDIT_FRAMES:   u16 = 131;
 const ID_EDIT_SIZE:     u16 = 132;
 const ID_DETAIL_TEXT:   u16 = 133;
@@ -683,7 +684,7 @@ struct VidScanResult {
 }
 
 fn run_vid_scan(
-    folders: Vec<PathBuf>, cancel: Arc<Mutex<bool>>,
+    folders: Vec<PathBuf>, extra_files: Vec<PathBuf>, cancel: Arc<Mutex<bool>>,
     sample_frames: usize, min_size_bytes: u64, hwnd_raw: usize,
 ) -> VidScanResult {
     let start = Instant::now();
@@ -693,6 +694,10 @@ fn run_vid_scan(
         if *cancel.lock().unwrap() {
             return VidScanResult { results: vec![], total: 0, elapsed_secs: start.elapsed().as_secs_f64(), cancelled: true };
         }
+    }
+    // 개별 파일 직접 추가 (중복 제거)
+    for f in extra_files {
+        if !video_files.contains(&f) { video_files.push(f); }
     }
 
     let total = video_files.len();
@@ -754,6 +759,7 @@ impl DupFinderState {
 }
 
 struct VideoCheckerState {
+    extra_files: Vec<PathBuf>,
     results: Vec<AnalysisResult>,
     result_labels: Vec<String>,
     result_paths: Vec<Option<PathBuf>>,
@@ -814,6 +820,7 @@ impl AppState {
                 cancel: Arc::new(Mutex::new(false)),
             },
             video_checker: VideoCheckerState {
+                extra_files: vec![],
                 results: vec![],
                 result_labels: vec![],
                 result_paths: vec![],
@@ -883,7 +890,8 @@ static mut HWND_BTN_SCAN_DUP: HWND = HWND(std::ptr::null_mut());
 static mut HWND_BTN_DELETE:   HWND = HWND(std::ptr::null_mut());
 
 // 영상 체크 전용
-static mut HWND_BTN_SCAN_VID: HWND = HWND(std::ptr::null_mut());
+static mut HWND_BTN_SCAN_VID:    HWND = HWND(std::ptr::null_mut());
+static mut HWND_BTN_ADD_FILE_VID: HWND = HWND(std::ptr::null_mut());
 static mut HWND_EDIT_FRAMES:  HWND = HWND(std::ptr::null_mut());
 static mut HWND_EDIT_SIZE:    HWND = HWND(std::ptr::null_mut());
 static mut HWND_DETAIL:       HWND = HWND(std::ptr::null_mut());
@@ -977,6 +985,31 @@ unsafe fn pick_folder(parent: HWND) -> Option<PathBuf> {
     Some(PathBuf::from(path_ptr.to_string().ok()?))
 }
 
+unsafe fn pick_files(parent: HWND) -> Vec<PathBuf> {
+    let dialog: IFileOpenDialog = match CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER) {
+        Ok(d) => d, Err(_) => return vec![],
+    };
+    let mut opts = match dialog.GetOptions() { Ok(o) => o, Err(_) => return vec![] };
+    opts |= FOS_ALLOWMULTISELECT;
+    let _ = dialog.SetOptions(opts);
+    let title = wstr("파일 선택");
+    let _ = dialog.SetTitle(PCWSTR(title.as_ptr()));
+    if dialog.Show(Some(parent)).is_err() { return vec![]; }
+    let results: IShellItemArray = match dialog.GetResults() { Ok(r) => r, Err(_) => return vec![] };
+    let count = match results.GetCount() { Ok(c) => c, Err(_) => return vec![] };
+    let mut paths = Vec::new();
+    for i in 0..count {
+        if let Ok(item) = results.GetItemAt(i) {
+            if let Ok(ptr) = item.GetDisplayName(SIGDN_FILESYSPATH) {
+                if let Ok(s) = ptr.to_string() {
+                    paths.push(PathBuf::from(s));
+                }
+            }
+        }
+    }
+    paths
+}
+
 unsafe fn open_in_explorer(path: &Path) {
     let arg = wstr(&format!("/select,\"{}\"", path.display()));
     let exe = wstr("explorer.exe");
@@ -1017,13 +1050,14 @@ unsafe fn show_tab(tab: Tab) {
     show_hide(HWND_BTN_DELETE,   is_dup);
 
     // 영상 체크 전용
-    show_hide(HWND_BTN_SCAN_VID, is_video);
-    show_hide(HWND_EDIT_FRAMES,  is_video);
-    show_hide(HWND_EDIT_SIZE,    is_video);
-    show_hide(HWND_DETAIL,       is_video);
-    show_hide(HWND_BTN_OPEN_VID, is_video);
-    show_hide(HWND_LBL_FRAMES,   is_video);
-    show_hide(HWND_LBL_SIZE,     is_video);
+    show_hide(HWND_BTN_SCAN_VID,     is_video);
+    show_hide(HWND_BTN_ADD_FILE_VID, is_video);
+    show_hide(HWND_EDIT_FRAMES,      is_video);
+    show_hide(HWND_EDIT_SIZE,        is_video);
+    show_hide(HWND_DETAIL,           is_video);
+    show_hide(HWND_BTN_OPEN_VID,     is_video);
+    show_hide(HWND_LBL_FRAMES,       is_video);
+    show_hide(HWND_LBL_SIZE,         is_video);
 
     // 결과 라벨 텍스트 업데이트
     let result_label = match tab {
@@ -1063,6 +1097,13 @@ unsafe fn refresh_folder_list() {
     for f in st.current_folders() {
         let s = wstr(&f.display().to_string());
         send_msg(HWND_FOLDER_LIST, LB_ADDSTRING, 0, s.as_ptr() as isize);
+    }
+    if st.current_tab == Tab::VideoChecker {
+        for f in &st.video_checker.extra_files {
+            let label = format!("[파일] {}", f.display());
+            let s = wstr(&label);
+            send_msg(HWND_FOLDER_LIST, LB_ADDSTRING, 0, s.as_ptr() as isize);
+        }
     }
 }
 
@@ -1202,8 +1243,9 @@ unsafe fn layout(hwnd: HWND) {
             MoveWindow(HWND_EDIT_SIZE,   ox, y_mid,      edit_w_small,     btn_h,   true).ok();
 
             let y_btns = y_mid + btn_h + gap;
-            MoveWindow(HWND_BTN_SCAN_VID, m,             y_btns, 120, btn_h, true).ok();
-            MoveWindow(HWND_BTN_CANCEL,   m + 120 + gap, y_btns,  90, btn_h, true).ok();
+            MoveWindow(HWND_BTN_SCAN_VID,     m,                           y_btns, 120, btn_h, true).ok();
+            MoveWindow(HWND_BTN_CANCEL,       m + 120 + gap,               y_btns,  90, btn_h, true).ok();
+            MoveWindow(HWND_BTN_ADD_FILE_VID, m + 120 + gap + 90 + gap,   y_btns, 110, btn_h, true).ok();
 
             let y_lbl_result = y_btns + btn_h + gap;
             let open_w = 150;
@@ -1238,11 +1280,32 @@ unsafe fn on_add_folder(hwnd: HWND) {
 unsafe fn on_remove_folder() {
     let idx = send_msg(HWND_FOLDER_LIST, LB_GETCURSEL, 0, 0).0 as usize;
     let mut st = state();
-    if idx < st.current_folders().len() {
+    let folder_len = st.current_folders().len();
+    if idx < folder_len {
         st.current_folders_mut().remove(idx);
-        drop(st);
-        refresh_folder_list();
+    } else if st.current_tab == Tab::VideoChecker {
+        let file_idx = idx - folder_len;
+        if file_idx < st.video_checker.extra_files.len() {
+            st.video_checker.extra_files.remove(file_idx);
+        }
     }
+    drop(st);
+    refresh_folder_list();
+}
+
+unsafe fn on_add_file_vid(hwnd: HWND) {
+    let files = pick_files(hwnd);
+    if files.is_empty() { return; }
+    let mut st = state();
+    for f in files {
+        let ext = f.extension().unwrap_or_default().to_string_lossy().to_lowercase();
+        if !VIDEO_EXTENSIONS.contains(&ext.as_str()) { continue; }
+        if !st.video_checker.extra_files.contains(&f) {
+            st.video_checker.extra_files.push(f);
+        }
+    }
+    drop(st);
+    refresh_folder_list();
 }
 
 // ── 파일 검색 ──────────────────────────────────────────────────────────────
@@ -1457,10 +1520,12 @@ unsafe fn on_dup_delete(hwnd: HWND) {
 // ── 영상 체크 ──────────────────────────────────────────────────────────────
 
 unsafe fn on_vid_scan(hwnd: HWND) {
-    let folders = {
+    let (folders, extra_files) = {
         let st = state();
-        if st.folders.is_empty() { set_text(HWND_STATS, "폴더를 추가하세요."); return; }
-        st.folders.clone()
+        if st.folders.is_empty() && st.video_checker.extra_files.is_empty() {
+            set_text(HWND_STATS, "폴더 또는 파일을 추가하세요."); return;
+        }
+        (st.folders.clone(), st.video_checker.extra_files.clone())
     };
 
     let sample_frames = get_edit_text(HWND_EDIT_FRAMES).trim().parse::<usize>().unwrap_or(1000).max(50).min(10000);
@@ -1479,11 +1544,12 @@ unsafe fn on_vid_scan(hwnd: HWND) {
 
     refresh_result_list();
     set_text(HWND_DETAIL, "");
-    _ = EnableWindow(HWND_BTN_SCAN_VID, false);
-    _ = EnableWindow(HWND_BTN_ADD,      false);
-    _ = EnableWindow(HWND_BTN_REMOVE,   false);
-    _ = EnableWindow(HWND_BTN_CANCEL,   true);
-    _ = EnableWindow(HWND_BTN_OPEN_VID, false);
+    _ = EnableWindow(HWND_BTN_SCAN_VID,     false);
+    _ = EnableWindow(HWND_BTN_ADD,          false);
+    _ = EnableWindow(HWND_BTN_ADD_FILE_VID, false);
+    _ = EnableWindow(HWND_BTN_REMOVE,       false);
+    _ = EnableWindow(HWND_BTN_CANCEL,       true);
+    _ = EnableWindow(HWND_BTN_OPEN_VID,     false);
     set_text(HWND_STATUS, "파일 목록 수집 중...");
     set_text(HWND_STATS, "스캔 준비 중...");
 
@@ -1491,7 +1557,7 @@ unsafe fn on_vid_scan(hwnd: HWND) {
     let hwnd_raw = hwnd.0 as usize;
 
     std::thread::spawn(move || {
-        let result = run_vid_scan(folders, cancel, sample_frames, min_size_bytes, hwnd_raw);
+        let result = run_vid_scan(folders, extra_files, cancel, sample_frames, min_size_bytes, hwnd_raw);
         unsafe {
             { let mut st = state(); st.video_checker.results = result.results; }
             LAST_TOTAL     = result.total;
@@ -1531,10 +1597,11 @@ unsafe fn on_vid_scan_done(_hwnd: HWND) {
     set_text(HWND_STATS, &stats_str);
     set_text(HWND_STATUS, "");
 
-    _ = EnableWindow(HWND_BTN_SCAN_VID, true);
-    _ = EnableWindow(HWND_BTN_ADD,      true);
-    _ = EnableWindow(HWND_BTN_REMOVE,   true);
-    _ = EnableWindow(HWND_BTN_CANCEL,   false);
+    _ = EnableWindow(HWND_BTN_SCAN_VID,     true);
+    _ = EnableWindow(HWND_BTN_ADD,          true);
+    _ = EnableWindow(HWND_BTN_ADD_FILE_VID, true);
+    _ = EnableWindow(HWND_BTN_REMOVE,       true);
+    _ = EnableWindow(HWND_BTN_CANCEL,       false);
 }
 
 unsafe fn on_vid_result_click() {
@@ -1693,6 +1760,8 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
                 // ── 영상 체크 전용 ──────────────────────
                 HWND_BTN_SCAN_VID = create_control("BUTTON", "스캔",
                     WS_CHILD | WS_TABSTOP, WINDOW_EX_STYLE(0), 0,0,0,0, hwnd, ID_BTN_SCAN_VID);
+                HWND_BTN_ADD_FILE_VID = create_control("BUTTON", "파일 추가",
+                    WS_CHILD | WS_TABSTOP, WINDOW_EX_STYLE(0), 0,0,0,0, hwnd, ID_BTN_ADD_FILE_VID);
                 HWND_EDIT_FRAMES = create_control_font("EDIT", "1000",
                     WS_CHILD | WS_TABSTOP | WS_BORDER | WINDOW_STYLE(ES_NUMBER as u32 | ES_AUTOHSCROLL as u32),
                     WS_EX_CLIENTEDGE, 0,0,0,0, hwnd, ID_EDIT_FRAMES, H_FONT);
@@ -1763,8 +1832,9 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
                     }
 
                     // ── 영상 체크 ────────────────────────
-                    ID_BTN_SCAN_VID  => on_vid_scan(hwnd),
-                    ID_BTN_OPEN_VID  => on_vid_open_location(),
+                    ID_BTN_SCAN_VID    => on_vid_scan(hwnd),
+                    ID_BTN_OPEN_VID    => on_vid_open_location(),
+                    ID_BTN_ADD_FILE_VID => on_add_file_vid(hwnd),
 
                     _ => {}
                 }

@@ -1120,8 +1120,8 @@ unsafe fn layout(hwnd: HWND) {
 
     // 하단 고정 높이: 결과 라벨 + 결과 리스트 아래 요소들 + 하단 여백
     let below_result: i32 = match tab {
-        Tab::VideoChecker => 80 + gap + status_h + gap + status_h + m, // detail + status + stats
-        _                 =>            status_h + gap + status_h + m,
+        Tab::VideoChecker => gap + 80 + gap + status_h + gap + status_h + m, // result→detail gap + detail + status + stats
+        _                 =>                  status_h + gap + status_h + m,
     };
 
     // 폴더 영역 비율 고정: 폴더 2, 결과 5

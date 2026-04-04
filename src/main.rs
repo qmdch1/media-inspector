@@ -1663,6 +1663,10 @@ extern "system" fn edit_query_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
             on_file_search(HWND_MAIN);
             return LRESULT(0);
         }
+        if msg == WM_KEYDOWN && wparam.0 == b'A' as usize && GetKeyState(VK_CONTROL.0 as i32) < 0 {
+            send_msg(hwnd, EM_SETSEL, 0, -1);
+            return LRESULT(0);
+        }
         if let Some(orig) = EDIT_QUERY_ORIG_PROC {
             orig(hwnd, msg, wparam, lparam)
         } else {

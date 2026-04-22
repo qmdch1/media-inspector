@@ -15,6 +15,19 @@ Requires **ffprobe** (included with FFmpeg) for video quality analysis.
 
 ---
 
+## Screenshots
+
+### File Search
+![File Search](docs/screenshot-file-search.png)
+
+### Duplicate Finder
+![Duplicate Finder](docs/screenshot-duplicate.png)
+
+### Video Quality Check
+![Video Quality Check](docs/screenshot-video-check.png)
+
+---
+
 ## Features
 
 - Three tools in one window: **File Search**, **Duplicate Finder**, **Video Quality Check**

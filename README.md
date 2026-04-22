@@ -15,19 +15,6 @@ Requires **ffprobe** (included with FFmpeg) for video quality analysis.
 
 ---
 
-## Screenshots
-
-### File Search
-![File Search](docs/screenshot-file-search.png)
-
-### Duplicate Finder
-![Duplicate Finder](docs/screenshot-duplicate.png)
-
-### Video Quality Check
-![Video Quality Check](docs/screenshot-video-check.png)
-
----
-
 ## Features
 
 - Three tools in one window: **File Search**, **Duplicate Finder**, **Video Quality Check**
@@ -40,10 +27,14 @@ Requires **ffprobe** (included with FFmpeg) for video quality analysis.
 - Press **Enter** or click **Search** to run
 - Select a result and click **Open Location** to reveal it in Explorer
 
+![File Search](docs/screenshot-file-search.png)
+
 ### Duplicate Finder
 - Recursively scans folders and groups identical files by partial MD5 hash
 - Select duplicates and delete them in bulk
 - Shows total wasted space
+
+![Duplicate Finder](docs/screenshot-duplicate.png)
 
 ### Video Quality Check
 - ffprobe-based frame analysis covering 15 issue types
@@ -51,6 +42,8 @@ Requires **ffprobe** (included with FFmpeg) for video quality analysis.
 - Click a result to view detailed issues in the panel below
 - Open file location in Explorer
 - Configurable sample frame count and minimum file size
+
+![Video Quality Check](docs/screenshot-video-check.png)
 
 ---
 
